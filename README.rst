@@ -1,40 +1,16 @@
+WARNING: This is a almost a copy of scrapy-slash but works with https://github.com/prerender/prerender
+
 ==============================================
 Scrapy & JavaScript integration through Prerender
 ==============================================
-
-.. image:: https://img.shields.io/pypi/v/scrapy-prerender.svg
-   :target: https://pypi.python.org/pypi/scrapy-prerender
-   :alt: PyPI Version
-
-.. image:: https://travis-ci.org/scrapy-plugins/scrapy-prerender.svg?branch=master
-   :target: http://travis-ci.org/scrapy-plugins/scrapy-prerender
-   :alt: Build Status
-
-.. image:: http://codecov.io/github/scrapy-plugins/scrapy-prerender/coverage.svg?branch=master
-   :target: http://codecov.io/github/scrapy-plugins/scrapy-prerender?branch=master
-   :alt: Code Coverage
-
-This library provides Scrapy_ and JavaScript integration using Prerender_.
-The license is BSD 3-clause.
-
 .. _Scrapy: https://github.com/scrapy/scrapy
-.. _Prerender: https://github.com/scrapinghub/prerender
 
 Installation
 ============
 
-Install scrapy-prerender using pip::
+Install scrapy-prerender::
 
-    $ pip install scrapy-prerender
-
-Scrapy-Prerender uses Prerender_ HTTP API, so you also need a Prerender instance.
-Usually to install & run Prerender, something like this is enough::
-
-    $ docker run -p 8050:8050 scrapinghub/prerender
-
-Check Prerender `install docs`_ for more info.
-
-.. _install docs: http://prerender.readthedocs.org/en/latest/install.html
+    $ python setup.py install
 
 
 Configuration
@@ -131,7 +107,7 @@ use ``scrapy_prerender.PrerenderRequest``::
             # 'http_method' is set to 'POST' for POST requests
             # 'body' is set to request body for POST requests
         },
-        endpoint='render.json', # optional; default is render.html
+        endpoint='render.json', # optional; default is render
         prerender_url='<url>',     # optional; overrides PRERENDER_URL
         slot_policy=scrapy_prerender.SlotPolicy.PER_DOMAIN,  # optional
     )
@@ -202,7 +178,7 @@ to set ``meta['prerender']['args']`` use ``PrerenderRequest(..., args=myargs)``.
 
 * ``meta['prerender']['endpoint']`` is the Prerender endpoint to use.
   In case of PrerenderRequest
-  `render.html <http://prerender.readthedocs.org/en/latest/api.html#render-html>`_
+  `render <http://prerender.readthedocs.org/en/latest/api.html#render-html>`_
   is used by default. If you're using raw scrapy.Request then
   `render.json <http://prerender.readthedocs.org/en/latest/api.html#render-json>`_
   is a default (for historical reasons). It is better to always pass endpoint
@@ -299,7 +275,7 @@ scrapy-prerender returns Response subclasses for Prerender requests:
 * PrerenderResponse is returned for binary Prerender responses - e.g. for
   /render.png responses;
 * PrerenderTextResponse is returned when the result is text - e.g. for
-  /render.html responses;
+  /render responses;
 * PrerenderJsonResponse is returned when the result is a JSON object - e.g.
   for /render.json responses or /execute responses when script returns
   a Lua table.
@@ -402,7 +378,7 @@ Get HTML contents::
                 yield PrerenderRequest(url, self.parse, args={'wait': 0.5})
 
         def parse(self, response):
-            # response.body is a result of render.html call; it
+            # response.body is a result of render call; it
             # contains HTML processed by a browser.
             # ...
 
@@ -603,7 +579,7 @@ sure to read the observations after it::
     import scrapy
     from scrapy.http.headers import Headers
 
-    RENDER_HTML_URL = "http://127.0.0.1:8050/render.html"
+    RENDER_HTML_URL = "http://127.0.0.1:8050/render"
 
     class MySpider(scrapy.Spider):
         start_urls = ["http://example.com", "http://example.com/foo"]
@@ -616,7 +592,7 @@ sure to read the observations after it::
                                      body=body, headers=headers)
 
         def parse(self, response):
-            # response.body is a result of render.html call; it
+            # response.body is a result of render call; it
             # contains HTML processed by a browser.
             # ...
 

@@ -72,17 +72,17 @@ def test_prerender_request():
     req2 = mw.process_request(req2, None) or req2
     assert req2 is not None
     assert req2 is not req
-    assert req2.url == "http://127.0.0.1:8050/render.html"
+    assert req2.url == "http://127.0.0.1:8050/render"
     assert req2.headers == {b'Content-Type': [b'application/json']}
     assert req2.method == 'POST'
     assert isinstance(req2, PrerenderRequest)
-    assert repr(req2) == "<GET http://example.com?foo=bar&url=1&wait=100 via http://127.0.0.1:8050/render.html>"
+    assert repr(req2) == "<GET http://example.com?foo=bar&url=1&wait=100 via http://127.0.0.1:8050/render>"
 
     expected_body = {'url': req.url}
     assert json.loads(to_native_str(req2.body)) == expected_body
 
     # check response post-processing
-    response = TextResponse("http://127.0.0.1:8050/render.html",
+    response = TextResponse("http://127.0.0.1:8050/render",
                             # Scrapy doesn't pass request to constructor
                             # request=req2,
                             headers={b'Content-Type': b'text/html'},
@@ -108,7 +108,7 @@ def test_prerender_request():
 def test_dont_process_response():
     mw = _get_mw()
     req = PrerenderRequest("http://example.com/",
-        endpoint="render.html",
+        endpoint="render",
         dont_process_response=True,
     )
     req2 = mw.process_request(req, None)
@@ -648,7 +648,7 @@ def test_post_request():
         req1 = scrapy.Request("http://example.com",
                               method="POST",
                               body=body,
-                              meta={'prerender': {'endpoint': 'render.html'}})
+                              meta={'prerender': {'endpoint': 'render'}})
         req = mw.process_request(req1, None)
         assert json.loads(to_native_str(req.body)) == {
             'url': 'http://example.com',
@@ -692,7 +692,7 @@ def test_float_wait_arg():
     mw = _get_mw()
     req1 = scrapy.Request("http://example.com", meta={
         'prerender': {
-            'endpoint': 'render.html',
+            'endpoint': 'render',
             'args': {'wait': 0.5}
         }
     })
