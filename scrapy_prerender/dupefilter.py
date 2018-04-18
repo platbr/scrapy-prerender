@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-To handle "splash" Request meta key properly a custom DupeFilter must be set.
+To handle "prerender" Request meta key properly a custom DupeFilter must be set.
 See https://github.com/scrapy/scrapy/issues/900 for more info.
 """
 from __future__ import absolute_import
@@ -18,26 +18,26 @@ from scrapy.utils.request import request_fingerprint
 from .utils import dict_hash
 
 
-def splash_request_fingerprint(request, include_headers=None):
-    """ Request fingerprint which takes 'splash' meta key into account """
+def prerender_request_fingerprint(request, include_headers=None):
+    """ Request fingerprint which takes 'prerender' meta key into account """
 
     fp = request_fingerprint(request, include_headers=include_headers)
-    if 'splash' not in request.meta:
+    if 'prerender' not in request.meta:
         return fp
 
-    splash_options = deepcopy(request.meta['splash'])
-    args = splash_options.setdefault('args', {})
+    prerender_options = deepcopy(request.meta['prerender'])
+    args = prerender_options.setdefault('args', {})
 
     if 'url' in args:
         args['url'] = canonicalize_url(args['url'], keep_fragments=True)
 
-    return dict_hash(splash_options, fp)
+    return dict_hash(prerender_options, fp)
 
 
-class SplashAwareDupeFilter(RFPDupeFilter):
+class PrerenderAwareDupeFilter(RFPDupeFilter):
     """
-    DupeFilter that takes 'splash' meta key in account.
-    It should be used with SplashMiddleware.
+    DupeFilter that takes 'prerender' meta key in account.
+    It should be used with PrerenderMiddleware.
     """
     def request_fingerprint(self, request):
-        return splash_request_fingerprint(request)
+        return prerender_request_fingerprint(request)

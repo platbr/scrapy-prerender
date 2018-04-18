@@ -4,31 +4,31 @@ from pytest_twisted import inlineCallbacks
 from twisted.web.resource import Resource
 from w3lib.url import canonicalize_url
 
-from scrapy_splash import SplashRequest
-from .utils import crawl_items, requires_splash, HtmlResource
+from scrapy_prerender import PrerenderRequest
+from .utils import crawl_items, requires_prerender, HtmlResource
 
 DEFAULT_SCRIPT = """
-function main(splash)
-  splash:init_cookies(splash.args.cookies)
-  splash:go{
-    splash.args.url,
-    headers=splash.args.headers,
-    http_method=splash.args.http_method,
-    body=splash.args.body,
+function main(prerender)
+  prerender:init_cookies(prerender.args.cookies)
+  prerender:go{
+    prerender.args.url,
+    headers=prerender.args.headers,
+    http_method=prerender.args.http_method,
+    body=prerender.args.body,
   }
-  local wait = tonumber(splash.args.wait or 0.5)  
-  assert(splash:wait(wait))
+  local wait = tonumber(prerender.args.wait or 0.5)  
+  assert(prerender:wait(wait))
 
-  local entries = splash:history()
+  local entries = prerender:history()
   local last_response = entries[#entries].response
   return {
-    url = splash:url(),
+    url = prerender:url(),
     headers = last_response.headers,
     http_status = last_response.status,
-    cookies = splash:get_cookies(),
-    html = splash:html(),
-    args = splash.args,
-    jsvalue = splash:evaljs("1+2"),
+    cookies = prerender:get_cookies(),
+    html = prerender:html(),
+    args = prerender.args,
+    jsvalue = prerender:evaljs("1+2"),
   }
 end
 """
@@ -64,13 +64,13 @@ class ResponseSpider(scrapy.Spider):
     url = None
 
     def start_requests(self):
-        yield SplashRequest(self.url)
+        yield PrerenderRequest(self.url)
 
     def parse(self, response):
         yield {'response': response}
 
 
-@requires_splash
+@requires_prerender
 @inlineCallbacks
 def test_basic(settings):
     items, url, crawler = yield crawl_items(ResponseSpider, HelloWorld,
@@ -81,7 +81,7 @@ def test_basic(settings):
     assert resp.css('body::text').extract_first().strip() == "hello world!"
 
 
-@requires_splash
+@requires_prerender
 @inlineCallbacks
 def test_reload(settings):
 
@@ -92,7 +92,7 @@ def test_reload(settings):
 
         def parse(self, response):
             yield {'response': response}
-            yield SplashRequest(self.url + '#foo')
+            yield PrerenderRequest(self.url + '#foo')
 
     items, url, crawler = yield crawl_items(ReloadSpider, HelloWorld, settings)
     assert len(items) == 2
@@ -100,9 +100,9 @@ def test_reload(settings):
     resp = items[0]['response']
     assert resp.url == url
     assert resp.css('body::text').extract_first().strip() == "hello world!"
-    assert resp.status == resp.splash_response_status == 200
-    assert resp.headers == resp.splash_response_headers
-    assert resp.splash_response_headers['Content-Type'] == b"text/html; charset=utf-8"
+    assert resp.status == resp.prerender_response_status == 200
+    assert resp.headers == resp.prerender_response_headers
+    assert resp.prerender_response_headers['Content-Type'] == b"text/html; charset=utf-8"
 
     resp2 = items[1]['response']
     assert resp2.body == resp.body
@@ -110,7 +110,7 @@ def test_reload(settings):
     assert resp2.url == resp.url + "#foo"
 
 
-@requires_splash
+@requires_prerender
 @inlineCallbacks
 def test_basic_lua(settings):
 
@@ -118,7 +118,7 @@ def test_basic_lua(settings):
         """ Make a request using a Lua script similar to the one from README
         """
         def start_requests(self):
-            yield SplashRequest(self.url + "#foo", endpoint='execute',
+            yield PrerenderRequest(self.url + "#foo", endpoint='execute',
                             args={'lua_source': DEFAULT_SCRIPT, 'foo': 'bar'})
 
 
@@ -127,30 +127,30 @@ def test_basic_lua(settings):
     assert len(items) == 1
     resp = items[0]['response']
     assert resp.url == url + "/#foo"
-    assert resp.status == resp.splash_response_status == 200
+    assert resp.status == resp.prerender_response_status == 200
     assert resp.css('body::text').extract_first().strip() == "hello world!"
     assert resp.data['jsvalue'] == 3
     assert resp.headers['X-MyHeader'] == b'my value'
     assert resp.headers['Content-Type'] == b'text/html'
-    assert resp.splash_response_headers['Content-Type'] == b'application/json'
+    assert resp.prerender_response_headers['Content-Type'] == b'application/json'
     assert resp.data['args']['foo'] == 'bar'
 
 
-@requires_splash
+@requires_prerender
 @inlineCallbacks
 def test_bad_request(settings):
     class BadRequestSpider(ResponseSpider):
         custom_settings = {'HTTPERROR_ALLOW_ALL': True}
 
         def start_requests(self):
-            yield SplashRequest(self.url, endpoint='execute',
+            yield PrerenderRequest(self.url, endpoint='execute',
                                 args={'lua_source': DEFAULT_SCRIPT, 'wait': 'bar'})
 
     class GoodRequestSpider(ResponseSpider):
         custom_settings = {'HTTPERROR_ALLOW_ALL': True}
 
         def start_requests(self):
-            yield SplashRequest(self.url, endpoint='execute',
+            yield PrerenderRequest(self.url, endpoint='execute',
                                 args={'lua_source': DEFAULT_SCRIPT})
 
 
@@ -158,22 +158,22 @@ def test_bad_request(settings):
                                             settings)
     resp = items[0]['response']
     assert resp.status == 400
-    assert resp.splash_response_status == 400
+    assert resp.prerender_response_status == 400
 
     items, url, crawler = yield crawl_items(GoodRequestSpider, Http400Resource,
                                             settings)
     resp = items[0]['response']
     assert resp.status == 400
-    assert resp.splash_response_status == 200
+    assert resp.prerender_response_status == 200
 
 
-@requires_splash
+@requires_prerender
 @inlineCallbacks
 def test_cache_args(settings):
 
     class CacheArgsSpider(ResponseSpider):
         def _request(self, url):
-            return SplashRequest(url, endpoint='execute',
+            return PrerenderRequest(url, endpoint='execute',
                                  args={'lua_source': DEFAULT_SCRIPT, 'x': 'yy'},
                                  cache_args=['lua_source'])
 
@@ -189,46 +189,46 @@ def test_cache_args(settings):
                                             settings)
     assert len(items) == 2
     resp = items[0]['response']
-    assert b"function main(splash)" in resp.request.body
+    assert b"function main(prerender)" in resp.request.body
     assert b"yy" in resp.request.body
     print(resp.body, resp.request.body)
 
     resp = items[1]['response']
-    assert b"function main(splash)" not in resp.request.body
+    assert b"function main(prerender)" not in resp.request.body
     assert b"yy" in resp.request.body
     print(resp.body, resp.request.body)
 
 
-@requires_splash
+@requires_prerender
 @inlineCallbacks
 def test_cookies(settings):
 
     # 64K for headers is over Twisted limit,
-    # so if these headers are sent to Splash request would fail.
+    # so if these headers are sent to Prerender request would fail.
     BOMB = 'x' * 64000
 
     class LuaScriptSpider(ResponseSpider):
-        """ Cookies must be sent to website, not to Splash """
+        """ Cookies must be sent to website, not to Prerender """
         custom_settings = {
-            'SPLASH_COOKIES_DEBUG': True,
+            'PRERENDER_COOKIES_DEBUG': True,
             'COOKIES_DEBUG': True,
         }
 
         def start_requests(self):
-            # cookies set without Splash should be still
+            # cookies set without Prerender should be still
             # sent to a remote website. FIXME: this is not the case.
             yield scrapy.Request(self.url + "/login", self.parse,
                                  cookies={'x-set-scrapy': '1'})
 
         def parse(self, response):
-            yield SplashRequest(self.url + "#egg", self.parse_1,
+            yield PrerenderRequest(self.url + "#egg", self.parse_1,
                                 endpoint='execute',
                                 args={'lua_source': DEFAULT_SCRIPT},
-                                cookies={'x-set-splash': '1'})
+                                cookies={'x-set-prerender': '1'})
 
         def parse_1(self, response):
             yield {'response': response}
-            yield SplashRequest(self.url + "#foo", self.parse_2,
+            yield PrerenderRequest(self.url + "#foo", self.parse_2,
                                 endpoint='execute',
                                 args={'lua_source': DEFAULT_SCRIPT})
 
@@ -237,11 +237,11 @@ def test_cookies(settings):
             yield scrapy.Request(self.url, self.parse_3)
 
         def parse_3(self, response):
-            # Splash (Twisted) drops requests with huge http headers,
+            # Prerender (Twisted) drops requests with huge http headers,
             # but this one should work, as cookies are not sent
-            # to Splash itself.
+            # to Prerender itself.
             yield {'response': response}
-            yield SplashRequest(self.url + "#bar", self.parse_4,
+            yield PrerenderRequest(self.url + "#bar", self.parse_4,
                                 endpoint='execute',
                                 args={'lua_source': DEFAULT_SCRIPT},
                                 cookies={'bomb': BOMB})
@@ -257,52 +257,52 @@ def test_cookies(settings):
                                             settings)
     assert len(items) == 4
 
-    # cookie should be sent to remote website, not to Splash
+    # cookie should be sent to remote website, not to Prerender
     resp = items[0]['response']
-    splash_request_headers = resp.request.headers
+    prerender_request_headers = resp.request.headers
     cookies = resp.data['args']['cookies']
-    print(splash_request_headers)
+    print(prerender_request_headers)
     print(cookies)
     assert _cookie_dict(cookies) == {
         # 'login': '1',   # FIXME
-        'x-set-splash': '1'
+        'x-set-prerender': '1'
     }
-    assert splash_request_headers.get(b'Cookie') is None
+    assert prerender_request_headers.get(b'Cookie') is None
 
-    # new cookie should be also sent to remote website, not to Splash
+    # new cookie should be also sent to remote website, not to Prerender
     resp2 = items[1]['response']
-    splash_request_headers = resp2.request.headers
+    prerender_request_headers = resp2.request.headers
     headers = resp2.data['args']['headers']
     cookies = resp2.data['args']['cookies']
     assert canonicalize_url(headers['Referer']) == canonicalize_url(url)
     assert _cookie_dict(cookies) == {
         # 'login': '1',
-        'x-set-splash': '1',
+        'x-set-prerender': '1',
         'sessionid': 'ABCD'
     }
-    print(splash_request_headers)
+    print(prerender_request_headers)
     print(headers)
     print(cookies)
-    assert splash_request_headers.get(b'Cookie') is None
+    assert prerender_request_headers.get(b'Cookie') is None
 
-    # TODO/FIXME: Cookies fetched when working with Splash should be picked up
+    # TODO/FIXME: Cookies fetched when working with Prerender should be picked up
     # by Scrapy
     resp3 = items[2]['response']
-    splash_request_headers = resp3.request.headers
-    cookie_header = splash_request_headers.get(b'Cookie')
+    prerender_request_headers = resp3.request.headers
+    cookie_header = prerender_request_headers.get(b'Cookie')
     assert b'x-set-scrapy=1' in cookie_header
     assert b'login=1' in cookie_header
-    assert b'x-set-splash=1' in cookie_header
+    assert b'x-set-prerender=1' in cookie_header
     # assert b'sessionid=ABCD' in cookie_header  # FIXME
 
     # cookie bomb shouldn't cause problems
     resp4 = items[3]['response']
-    splash_request_headers = resp4.request.headers
+    prerender_request_headers = resp4.request.headers
     cookies = resp4.data['args']['cookies']
     assert _cookie_dict(cookies) == {
         # 'login': '1',
-        'x-set-splash': '1',
+        'x-set-prerender': '1',
         'sessionid': 'ABCD',
         'bomb': BOMB,
     }
-    assert splash_request_headers.get(b'Cookie') is None
+    assert prerender_request_headers.get(b'Cookie') is None

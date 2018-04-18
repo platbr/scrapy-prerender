@@ -121,12 +121,12 @@ def scrapy_headers_to_unicode_dict(headers):
     }
 
 
-def parse_x_splash_saved_arguments_header(value):
+def parse_x_prerender_saved_arguments_header(value):
     """
-    Parse X-Splash-Saved-Arguments header value.
+    Parse X-Prerender-Saved-Arguments header value.
 
     >>> value = u"name1=9a6747fc6259aa374ab4e1bb03074b6ec672cf99;name2=ba001160ef96fe2a3f938fea9e6762e204a562b3"
-    >>> dct = parse_x_splash_saved_arguments_header(value)
+    >>> dct = parse_x_prerender_saved_arguments_header(value)
     >>> sorted(list(dct.keys()))
     ['name1', 'name2']
     >>> dct['name1']
@@ -135,7 +135,7 @@ def parse_x_splash_saved_arguments_header(value):
     'ba001160ef96fe2a3f938fea9e6762e204a562b3'
 
     Binary header values are also supported:
-    >>> dct2 = parse_x_splash_saved_arguments_header(value.encode('utf8'))
+    >>> dct2 = parse_x_prerender_saved_arguments_header(value.encode('utf8'))
     >>> dct2 == dct
     True
     """

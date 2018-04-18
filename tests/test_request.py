@@ -1,30 +1,30 @@
 import cgi
 
 from scrapy.http import HtmlResponse
-from scrapy_splash import SplashRequest, SplashFormRequest
+from scrapy_prerender import PrerenderRequest, PrerenderFormRequest
 
 
 def test_meta_None():
-    req1 = SplashRequest('http://example.com')
-    req2 = SplashRequest('http://example.com', meta=None)
+    req1 = PrerenderRequest('http://example.com')
+    req2 = PrerenderRequest('http://example.com', meta=None)
     assert req1.meta == req2.meta
 
 
-def test_splash_form_request():
-    req = SplashFormRequest(
+def test_prerender_form_request():
+    req = PrerenderFormRequest(
         'http://example.com', formdata={'foo': 'bar'})
     assert req.method == 'POST'
     assert req.body == b'foo=bar'
-    assert req.meta['splash']['args']['url'] == 'http://example.com'
+    assert req.meta['prerender']['args']['url'] == 'http://example.com'
 
-    req = SplashFormRequest(
+    req = PrerenderFormRequest(
         'http://example.com', method='GET', formdata={'foo': 'bar'},
         endpoint='execute')
     assert req.method == 'GET'
     assert req.body == b''
-    assert req.url == req.meta['splash']['args']['url'] ==\
+    assert req.url == req.meta['prerender']['args']['url'] ==\
         'http://example.com?foo=bar'
-    assert req.meta['splash']['endpoint'] == 'execute'
+    assert req.meta['prerender']['endpoint'] == 'execute'
 
 
 def test_form_request_from_response():
@@ -41,10 +41,10 @@ def test_form_request_from_response():
         <input type="hidden" name="two" value="3">
         <input type="submit" name="clickable2" value="clicked2">
         </form>""")
-    req = SplashFormRequest.from_response(
+    req = PrerenderFormRequest.from_response(
         response, formdata={'two': '2'}, clickdata={'name': 'clickable2'})
     assert req.method == 'GET'
-    assert req.meta['splash']['args']['url'] == req.url
+    assert req.meta['prerender']['args']['url'] == req.url
     fs = cgi.parse_qs(req.url.partition('?')[2], True)
     assert fs['clickable2'] == ['clicked2']
     assert 'clickable1' not in fs
@@ -52,9 +52,9 @@ def test_form_request_from_response():
     assert fs['two'] == ['2']
 
 
-def test_splash_request_meta():
+def test_prerender_request_meta():
     meta = {'foo': 'bar'}
-    req = SplashRequest('http://example.com', meta=meta)
-    assert 'splash' in req.meta
+    req = PrerenderRequest('http://example.com', meta=meta)
+    assert 'prerender' in req.meta
     assert req.meta['foo'] == 'bar'
     assert meta == {'foo': 'bar'}

@@ -5,7 +5,7 @@ import json
 from hypothesis import given, assume
 from hypothesis import strategies as st
 from scrapy.http import Headers
-from scrapy_splash.utils import (
+from scrapy_prerender.utils import (
     headers_to_scrapy,
     _fast_hash,
     json_based_hash,

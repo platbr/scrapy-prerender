@@ -10,14 +10,14 @@ from scrapy.utils.test import get_crawler
 from scrapy.http import Response, TextResponse
 from scrapy.downloadermiddlewares.httpcache import HttpCacheMiddleware
 
-import scrapy_splash
-from scrapy_splash.utils import to_native_str
-from scrapy_splash import (
-    SplashRequest,
-    SplashMiddleware,
+import scrapy_prerender
+from scrapy_prerender.utils import to_native_str
+from scrapy_prerender import (
+    PrerenderRequest,
+    PrerenderMiddleware,
     SlotPolicy,
-    SplashCookiesMiddleware,
-    SplashDeduplicateArgsMiddleware,
+    PrerenderCookiesMiddleware,
+    PrerenderDeduplicateArgsMiddleware,
 )
 
 
@@ -34,14 +34,14 @@ def _get_crawler(settings_dict):
 
 def _get_mw():
     crawler = _get_crawler({})
-    return SplashMiddleware.from_crawler(crawler)
+    return PrerenderMiddleware.from_crawler(crawler)
 
 
 def _get_cookie_mw():
-    return SplashCookiesMiddleware(debug=True)
+    return PrerenderCookiesMiddleware(debug=True)
 
 
-def test_nosplash():
+def test_noprerender():
     mw = _get_mw()
     cookie_mw = _get_cookie_mw()
     req = scrapy.Request("http://example.com")
@@ -60,11 +60,11 @@ def test_nosplash():
     assert response3.url == "http://example.com"
 
 
-def test_splash_request():
+def test_prerender_request():
     mw = _get_mw()
     cookie_mw = _get_cookie_mw()
 
-    req = SplashRequest("http://example.com?foo=bar&url=1&wait=100")
+    req = PrerenderRequest("http://example.com?foo=bar&url=1&wait=100")
     assert repr(req) == "<GET http://example.com?foo=bar&url=1&wait=100>"
 
     # check request preprocessing
@@ -75,7 +75,7 @@ def test_splash_request():
     assert req2.url == "http://127.0.0.1:8050/render.html"
     assert req2.headers == {b'Content-Type': [b'application/json']}
     assert req2.method == 'POST'
-    assert isinstance(req2, SplashRequest)
+    assert isinstance(req2, PrerenderRequest)
     assert repr(req2) == "<GET http://example.com?foo=bar&url=1&wait=100 via http://127.0.0.1:8050/render.html>"
 
     expected_body = {'url': req.url}
@@ -89,7 +89,7 @@ def test_splash_request():
                             body=b"<html><body>Hello</body></html>")
     response2 = mw.process_response(req2, response, None)
     response2 = cookie_mw.process_response(req2, response2, None)
-    assert isinstance(response2, scrapy_splash.SplashTextResponse)
+    assert isinstance(response2, scrapy_prerender.PrerenderTextResponse)
     assert response2 is not response
     assert response2.real_url == req2.url
     assert response2.url == req.url
@@ -100,14 +100,14 @@ def test_splash_request():
     # check .replace method
     response3 = response2.replace(status=404)
     assert response3.status == 404
-    assert isinstance(response3, scrapy_splash.SplashTextResponse)
+    assert isinstance(response3, scrapy_prerender.PrerenderTextResponse)
     for attr in ['url', 'real_url', 'headers', 'body']:
         assert getattr(response3, attr) == getattr(response2, attr)
 
 
 def test_dont_process_response():
     mw = _get_mw()
-    req = SplashRequest("http://example.com/",
+    req = PrerenderRequest("http://example.com/",
         endpoint="render.html",
         dont_process_response=True,
     )
@@ -118,19 +118,19 @@ def test_dont_process_response():
     assert resp2 is resp
 
 
-def test_splash_request_parameters():
+def test_prerender_request_parameters():
     mw = _get_mw()
     cookie_mw = _get_cookie_mw()
 
     def cb():
         pass
 
-    req = SplashRequest("http://example.com/#!start", cb, 'POST',
+    req = PrerenderRequest("http://example.com/#!start", cb, 'POST',
         body="foo=bar",
-        splash_url="http://mysplash.example.com",
+        prerender_url="http://myprerender.example.com",
         slot_policy=SlotPolicy.SINGLE_SLOT,
         endpoint="execute",
-        splash_headers={'X-My-Header': 'value'},
+        prerender_headers={'X-My-Header': 'value'},
         args={
             "lua_source": "function main() end",
             "myarg": 3.0,
@@ -140,11 +140,11 @@ def test_splash_request_parameters():
     )
     req2 = cookie_mw.process_request(req, None) or req
     req2 = mw.process_request(req2, None)
-    assert req2.meta['splash'] == {
+    assert req2.meta['prerender'] == {
         'endpoint': 'execute',
-        'splash_url': "http://mysplash.example.com",
+        'prerender_url': "http://myprerender.example.com",
         'slot_policy': SlotPolicy.SINGLE_SLOT,
-        'splash_headers': {'X-My-Header': 'value'},
+        'prerender_headers': {'X-My-Header': 'value'},
         'magic_response': False,
         'session_id': 'default',
         'http_status_from_error_code': True,
@@ -172,31 +172,31 @@ def test_splash_request_parameters():
         'num_divs': 0.0,
     }
     res_body = json.dumps(res)
-    response = TextResponse("http://mysplash.example.com/execute",
+    response = TextResponse("http://myprerender.example.com/execute",
                             # Scrapy doesn't pass request to constructor
                             # request=req2,
                             headers={b'Content-Type': b'application/json'},
                             body=res_body.encode('utf8'))
     response2 = mw.process_response(req2, response, None)
     response2 = cookie_mw.process_response(req2, response2, None)
-    assert isinstance(response2, scrapy_splash.SplashJsonResponse)
+    assert isinstance(response2, scrapy_prerender.PrerenderJsonResponse)
     assert response2 is not response
     assert response2.real_url == req2.url
-    assert response2.url == req.meta['splash']['args']['url']
+    assert response2.url == req.meta['prerender']['args']['url']
     assert response2.data == res
     assert response2.body == res_body.encode('utf8')
     assert response2.text == response2.body_as_unicode() == res_body
     assert response2.encoding == 'utf8'
     assert response2.headers == {b'Content-Type': [b'application/json']}
-    assert response2.splash_response_headers == response2.headers
-    assert response2.status == response2.splash_response_status == 200
+    assert response2.prerender_response_headers == response2.headers
+    assert response2.status == response2.prerender_response_status == 200
 
 
 def test_magic_response():
     mw = _get_mw()
     cookie_mw = _get_cookie_mw()
 
-    req = SplashRequest('http://example.com/',
+    req = PrerenderRequest('http://example.com/',
                         endpoint='execute',
                         args={'lua_source': 'function main() end'},
                         magic_response=True,
@@ -220,12 +220,12 @@ def test_magic_response():
              'expires': '2055-07-24T19:20:30Z'},
         ],
     }
-    resp = TextResponse("http://mysplash.example.com/execute",
+    resp = TextResponse("http://myprerender.example.com/execute",
                         headers={b'Content-Type': b'application/json'},
                         body=json.dumps(resp_data).encode('utf8'))
     resp2 = mw.process_response(req, resp, None)
     resp2 = cookie_mw.process_response(req, resp2, None)
-    assert isinstance(resp2, scrapy_splash.SplashJsonResponse)
+    assert isinstance(resp2, scrapy_prerender.PrerenderJsonResponse)
     assert resp2.data == resp_data
     assert resp2.body == b'<html><body>Hello 404</body></html>'
     assert resp2.text == '<html><body>Hello 404</body></html>'
@@ -234,9 +234,9 @@ def test_magic_response():
         b'X-My-Header': [b'foo'],
         b'Set-Cookie': [b'bar=baz'],
     }
-    assert resp2.splash_response_headers == {b'Content-Type': [b'application/json']}
+    assert resp2.prerender_response_headers == {b'Content-Type': [b'application/json']}
     assert resp2.status == 404
-    assert resp2.splash_response_status == 200
+    assert resp2.prerender_response_status == 200
     assert resp2.url == "http://exmaple.com/#id42"
     assert len(resp2.cookiejar) == 3
     cookies = [c for c in resp2.cookiejar]
@@ -247,7 +247,7 @@ def test_magic_response():
     }
 
     # send second request using the same session and check the resulting cookies
-    req = SplashRequest('http://example.com/foo',
+    req = PrerenderRequest('http://example.com/foo',
                         endpoint='execute',
                         args={'lua_source': 'function main() end'},
                         magic_response=True,
@@ -271,12 +271,12 @@ def test_magic_response():
              'expires': '2056-07-24T19:20:30Z'},
         ],
     }
-    resp = TextResponse("http://mysplash.example.com/execute",
+    resp = TextResponse("http://myprerender.example.com/execute",
                         headers={b'Content-Type': b'application/json'},
                         body=json.dumps(resp_data).encode('utf8'))
     resp2 = mw.process_response(req, resp, None)
     resp2 = cookie_mw.process_response(req, resp2, None)
-    assert isinstance(resp2, scrapy_splash.SplashJsonResponse)
+    assert isinstance(resp2, scrapy_prerender.PrerenderJsonResponse)
     assert resp2.data == resp_data
     cookies = [c for c in resp2.cookiejar]
     assert {c.name for c in cookies} == {'session', 'egg', 'bar', 'spam'}
@@ -292,7 +292,7 @@ def test_cookies():
     cookie_mw = _get_cookie_mw()
 
     def request_with_cookies(cookies):
-        req = SplashRequest(
+        req = PrerenderRequest(
             'http://example.com/foo',
             endpoint='execute',
             args={'lua_source': 'function main() end'},
@@ -309,7 +309,7 @@ def test_cookies():
             'cookies': cookies,
         }
         resp = TextResponse(
-            'http://mysplash.example.com/execute',
+            'http://myprerender.example.com/execute',
             headers={b'Content-Type': b'application/json'},
             body=json.dumps(resp_data).encode('utf8'))
         resp = mw.process_response(req, resp, None)
@@ -346,36 +346,36 @@ def test_cookies():
 def test_magic_response2():
     # check 'body' handling and another 'headers' format
     mw = _get_mw()
-    req = SplashRequest('http://example.com/', magic_response=True,
+    req = PrerenderRequest('http://example.com/', magic_response=True,
                         headers={'foo': 'bar'}, dont_send_headers=True)
     req = mw.process_request(req, None)
-    assert 'headers' not in req.meta['splash']['args']
+    assert 'headers' not in req.meta['prerender']['args']
 
     resp_data = {
         'body': base64.b64encode(b"binary data").decode('ascii'),
         'headers': {'Content-Type': 'text/plain'},
     }
-    resp = TextResponse("http://mysplash.example.com/execute",
+    resp = TextResponse("http://myprerender.example.com/execute",
                         headers={b'Content-Type': b'application/json'},
                         body=json.dumps(resp_data).encode('utf8'))
     resp2 = mw.process_response(req, resp, None)
     assert resp2.data == resp_data
     assert resp2.body == b'binary data'
     assert resp2.headers == {b'Content-Type': [b'text/plain']}
-    assert resp2.splash_response_headers == {b'Content-Type': [b'application/json']}
-    assert resp2.status == resp2.splash_response_status == 200
+    assert resp2.prerender_response_headers == {b'Content-Type': [b'application/json']}
+    assert resp2.status == resp2.prerender_response_status == 200
     assert resp2.url == "http://example.com/"
 
 
 def test_unicode_url():
     mw = _get_mw()
-    req = SplashRequest(
+    req = PrerenderRequest(
         # note unicode URL
         u"http://example.com/", endpoint='execute')
     req2 = mw.process_request(req, None)
     res = {'html': '<html><body>Hello</body></html>'}
     res_body = json.dumps(res)
-    response = TextResponse("http://mysplash.example.com/execute",
+    response = TextResponse("http://myprerender.example.com/execute",
                             # Scrapy doesn't pass request to constructor
                             # request=req2,
                             headers={b'Content-Type': b'application/json'},
@@ -386,39 +386,39 @@ def test_unicode_url():
 
 def test_magic_response_http_error():
     mw = _get_mw()
-    req = SplashRequest('http://example.com/foo')
+    req = PrerenderRequest('http://example.com/foo')
     req = mw.process_request(req, None)
 
     resp_data = {
         "info": {
             "error": "http404",
-            "message": "Lua error: [string \"function main(splash)\r...\"]:3: http404",
+            "message": "Lua error: [string \"function main(prerender)\r...\"]:3: http404",
             "line_number": 3,
             "type": "LUA_ERROR",
-            "source": "[string \"function main(splash)\r...\"]"
+            "source": "[string \"function main(prerender)\r...\"]"
         },
         "description": "Error happened while executing Lua script",
         "error": 400,
         "type": "ScriptError"
     }
-    resp = TextResponse("http://mysplash.example.com/execute", status=400,
+    resp = TextResponse("http://myprerender.example.com/execute", status=400,
                         headers={b'Content-Type': b'application/json'},
                         body=json.dumps(resp_data).encode('utf8'))
     resp = mw.process_response(req, resp, None)
     assert resp.data == resp_data
     assert resp.status == 404
-    assert resp.splash_response_status == 400
+    assert resp.prerender_response_status == 400
     assert resp.url == "http://example.com/foo"
 
 
 def test_change_response_class_to_text():
     mw = _get_mw()
-    req = SplashRequest('http://example.com/', magic_response=True)
+    req = PrerenderRequest('http://example.com/', magic_response=True)
     req = mw.process_request(req, None)
     # Such response can come when downloading a file,
-    # or returning splash:html(): the headers say it's binary,
+    # or returning prerender:html(): the headers say it's binary,
     # but it can be decoded so it becomes a TextResponse.
-    resp = TextResponse('http://mysplash.example.com/execute',
+    resp = TextResponse('http://myprerender.example.com/execute',
                         headers={b'Content-Type': b'application/pdf'},
                         body=b'ascii binary data',
                         encoding='utf-8')
@@ -432,13 +432,13 @@ def test_change_response_class_to_text():
 def test_change_response_class_to_json_binary():
     mw = _get_mw()
     # We set magic_response to False, because it's not a kind of data we would
-    # expect from splash: we just return binary data.
+    # expect from prerender: we just return binary data.
     # If we set magic_response to True, the middleware will fail,
     # but this is ok because magic_response presumes we are expecting
-    # a valid splash json response.
-    req = SplashRequest('http://example.com/', magic_response=False)
+    # a valid prerender json response.
+    req = PrerenderRequest('http://example.com/', magic_response=False)
     req = mw.process_request(req, None)
-    resp = Response('http://mysplash.example.com/execute',
+    resp = Response('http://myprerender.example.com/execute',
                     headers={b'Content-Type': b'application/json'},
                     body=b'non-decodable data: \x98\x11\xe7\x17\x8f',
                     )
@@ -454,7 +454,7 @@ def test_magic_response_caching(tmpdir):
     spider = scrapy.Spider(name='foo')
     crawler = _get_crawler({
         'HTTPCACHE_DIR': str(tmpdir.join('cache')),
-        'HTTPCACHE_STORAGE': 'scrapy_splash.SplashAwareFSCacheStorage',
+        'HTTPCACHE_STORAGE': 'scrapy_prerender.PrerenderAwareFSCacheStorage',
         'HTTPCACHE_ENABLED': True
     })
     cache_mw = HttpCacheMiddleware.from_crawler(crawler)
@@ -462,11 +462,11 @@ def test_magic_response_caching(tmpdir):
     cookie_mw = _get_cookie_mw()
 
     def _get_req():
-        return SplashRequest(
+        return PrerenderRequest(
             url="http://example.com",
             endpoint='execute',
             magic_response=True,
-            args={'lua_source': 'function main(splash) end'},
+            args={'lua_source': 'function main(prerender) end'},
         )
 
     # Emulate Scrapy middleware chain.
@@ -508,7 +508,7 @@ def test_magic_response_caching(tmpdir):
     resp3_1 = mw.process_response(req, resp2_1, spider)
     resp3_1 = cookie_mw.process_response(req, resp3_1, spider)
 
-    assert isinstance(resp3_1, scrapy_splash.SplashJsonResponse)
+    assert isinstance(resp3_1, scrapy_prerender.PrerenderJsonResponse)
     assert resp3_1.body == b"<html><body>Hello</body></html>"
     assert resp3_1.text == "<html><body>Hello</body></html>"
     assert resp3_1.css("body").extract_first() == "<body>Hello</body>"
@@ -521,30 +521,30 @@ def test_cache_args():
     mw = _get_mw()
     mw.crawler.spider = spider
     mw.spider_opened(spider)
-    dedupe_mw = SplashDeduplicateArgsMiddleware()
+    dedupe_mw = PrerenderDeduplicateArgsMiddleware()
 
     # ========= Send first request - it should use save_args:
-    lua_source = 'function main(splash) end'
-    req = SplashRequest('http://example.com/foo',
+    lua_source = 'function main(prerender) end'
+    req = PrerenderRequest('http://example.com/foo',
                         endpoint='execute',
                         args={'lua_source': lua_source},
                         cache_args=['lua_source'])
 
-    assert req.meta['splash']['args']['lua_source'] == lua_source
+    assert req.meta['prerender']['args']['lua_source'] == lua_source
     # <---- spider
     req, = list(dedupe_mw.process_start_requests([req], spider))
     # ----> scheduler
-    assert req.meta['splash']['args']['lua_source'] != lua_source
+    assert req.meta['prerender']['args']['lua_source'] != lua_source
     assert list(mw._argument_values.values()) == [lua_source]
-    assert list(mw._argument_values.keys()) == [req.meta['splash']['args']['lua_source']]
+    assert list(mw._argument_values.keys()) == [req.meta['prerender']['args']['lua_source']]
     # <---- scheduler
     # process request before sending it to the downloader
     req = mw.process_request(req, spider) or req
     # -----> downloader
-    assert req.meta['splash']['args']['lua_source'] == lua_source
-    assert req.meta['splash']['args']['save_args'] == ['lua_source']
-    assert 'load_args' not in req.meta['splash']['args']
-    assert req.meta['splash']['_local_arg_fingerprints'] == {
+    assert req.meta['prerender']['args']['lua_source'] == lua_source
+    assert req.meta['prerender']['args']['save_args'] == ['lua_source']
+    assert 'load_args' not in req.meta['prerender']['args']
+    assert req.meta['prerender']['_local_arg_fingerprints'] == {
         'lua_source': list(mw._argument_values.keys())[0]
     }
     # <---- downloader
@@ -552,27 +552,27 @@ def test_cache_args():
     resp = TextResponse("http://example.com",
                         headers={
                             b'Content-Type': b'application/json',
-                            b'X-Splash-Saved-Arguments': b'lua_source=ba001160ef96fe2a3f938fea9e6762e204a562b3'
+                            b'X-Prerender-Saved-Arguments': b'lua_source=ba001160ef96fe2a3f938fea9e6762e204a562b3'
                         },
                         body=resp_body)
     resp = mw.process_response(req, resp, None)
 
     # ============ Send second request - it should use load_args
-    req2 = SplashRequest('http://example.com/bar',
+    req2 = PrerenderRequest('http://example.com/bar',
                         endpoint='execute',
                         args={'lua_source': lua_source},
                         cache_args=['lua_source'])
     req2, item = list(dedupe_mw.process_spider_output(resp, [req2, {'key': 'value'}], spider))
     assert item == {'key': 'value'}
     # ----> scheduler
-    assert req2.meta['splash']['args']['lua_source'] != lua_source
+    assert req2.meta['prerender']['args']['lua_source'] != lua_source
     # <---- scheduler
     # process request before sending it to the downloader
     req2 = mw.process_request(req2, spider) or req2
     # -----> downloader
-    assert req2.meta['splash']['args']['load_args'] == {"lua_source": "ba001160ef96fe2a3f938fea9e6762e204a562b3"}
-    assert "lua_source" not in req2.meta['splash']['args']
-    assert "save_args" not in req2.meta['splash']['args']
+    assert req2.meta['prerender']['args']['load_args'] == {"lua_source": "ba001160ef96fe2a3f938fea9e6762e204a562b3"}
+    assert "lua_source" not in req2.meta['prerender']['args']
+    assert "save_args" not in req2.meta['prerender']['args']
     assert json.loads(req2.body.decode('utf8')) == {
         'load_args': {'lua_source': 'ba001160ef96fe2a3f938fea9e6762e204a562b3'},
         'url': 'http://example.com/bar'
@@ -585,13 +585,13 @@ def test_cache_args():
 
     # =========== Third request is dispatched to another server where
     # =========== arguments are expired:
-    req3 = SplashRequest('http://example.com/baz',
+    req3 = PrerenderRequest('http://example.com/baz',
                          endpoint='execute',
                          args={'lua_source': lua_source},
                          cache_args=['lua_source'])
     req3, = list(dedupe_mw.process_spider_output(resp, [req3], spider))
     # ----> scheduler
-    assert req3.meta['splash']['args']['lua_source'] != lua_source
+    assert req3.meta['prerender']['args']['lua_source'] != lua_source
     # <---- scheduler
     req3 = mw.process_request(req3, spider) or req3
     # -----> downloader
@@ -612,7 +612,7 @@ def test_cache_args():
                         status=498,
                         body=resp_body.encode('utf8'))
     req4 = mw.process_response(req3, resp, spider)
-    assert isinstance(req4, SplashRequest)
+    assert isinstance(req4, PrerenderRequest)
 
     # process this request again
     req4, = list(dedupe_mw.process_spider_output(resp, [req4], spider))
@@ -620,17 +620,17 @@ def test_cache_args():
 
     # it should become save_args request after all middlewares
     assert json.loads(req4.body.decode('utf8')) == {
-        'lua_source': 'function main(splash) end',
+        'lua_source': 'function main(prerender) end',
         'save_args': ['lua_source'],
         'url': 'http://example.com/baz'
     }
     assert mw._remote_keys == {}
 
 
-def test_splash_request_no_url():
+def test_prerender_request_no_url():
     mw = _get_mw()
-    lua_source = "function main(splash) return {result='ok'} end"
-    req1 = SplashRequest(meta={'splash': {
+    lua_source = "function main(prerender) return {result='ok'} end"
+    req1 = PrerenderRequest(meta={'prerender': {
         'args': {'lua_source': lua_source},
         'endpoint': 'execute',
     }})
@@ -648,7 +648,7 @@ def test_post_request():
         req1 = scrapy.Request("http://example.com",
                               method="POST",
                               body=body,
-                              meta={'splash': {'endpoint': 'render.html'}})
+                              meta={'prerender': {'endpoint': 'render.html'}})
         req = mw.process_request(req1, None)
         assert json.loads(to_native_str(req.body)) == {
             'url': 'http://example.com',
@@ -657,16 +657,16 @@ def test_post_request():
         }
 
 
-def test_override_splash_url():
+def test_override_prerender_url():
     mw = _get_mw()
     req1 = scrapy.Request("http://example.com", meta={
-        'splash': {
+        'prerender': {
             'endpoint': 'render.png',
-            'splash_url': 'http://splash.example.com'
+            'prerender_url': 'http://prerender.example.com'
         }
     })
     req = mw.process_request(req1, None)
-    assert req.url == 'http://splash.example.com/render.png'
+    assert req.url == 'http://prerender.example.com/render.png'
     assert json.loads(to_native_str(req.body)) == {'url': req1.url}
 
 
@@ -674,16 +674,16 @@ def test_url_with_fragment():
     mw = _get_mw()
     url = "http://example.com#id1"
     req = scrapy.Request("http://example.com", meta={
-        'splash': {'args': {'url': url}}
+        'prerender': {'args': {'url': url}}
     })
     req = mw.process_request(req, None)
     assert json.loads(to_native_str(req.body)) == {'url': url}
 
 
-def test_splash_request_url_with_fragment():
+def test_prerender_request_url_with_fragment():
     mw = _get_mw()
     url = "http://example.com#id1"
-    req = SplashRequest(url)
+    req = PrerenderRequest(url)
     req = mw.process_request(req, None)
     assert json.loads(to_native_str(req.body)) == {'url': url}
 
@@ -691,7 +691,7 @@ def test_splash_request_url_with_fragment():
 def test_float_wait_arg():
     mw = _get_mw()
     req1 = scrapy.Request("http://example.com", meta={
-        'splash': {
+        'prerender': {
             'endpoint': 'render.html',
             'args': {'wait': 0.5}
         }
@@ -702,8 +702,8 @@ def test_float_wait_arg():
 
 def test_slot_policy_single_slot():
     mw = _get_mw()
-    meta = {'splash': {
-        'slot_policy': scrapy_splash.SlotPolicy.SINGLE_SLOT
+    meta = {'prerender': {
+        'slot_policy': scrapy_prerender.SlotPolicy.SINGLE_SLOT
     }}
 
     req1 = scrapy.Request("http://example.com/path?key=value", meta=meta)
@@ -718,8 +718,8 @@ def test_slot_policy_single_slot():
 
 def test_slot_policy_per_domain():
     mw = _get_mw()
-    meta = {'splash': {
-        'slot_policy': scrapy_splash.SlotPolicy.PER_DOMAIN
+    meta = {'prerender': {
+        'slot_policy': scrapy_prerender.SlotPolicy.PER_DOMAIN
     }}
 
     req1 = scrapy.Request("http://example.com/path?key=value", meta=meta)
@@ -740,8 +740,8 @@ def test_slot_policy_per_domain():
 
 def test_slot_policy_scrapy_default():
     mw = _get_mw()
-    req = scrapy.Request("http://example.com", meta = {'splash': {
-        'slot_policy': scrapy_splash.SlotPolicy.SCRAPY_DEFAULT
+    req = scrapy.Request("http://example.com", meta = {'prerender': {
+        'slot_policy': scrapy_prerender.SlotPolicy.SCRAPY_DEFAULT
     }})
     req = mw.process_request(req, None)
     assert 'download_slot' not in req.meta
@@ -750,7 +750,7 @@ def test_slot_policy_scrapy_default():
 def test_adjust_timeout():
     mw = _get_mw()
     req1 = scrapy.Request("http://example.com", meta = {
-        'splash': {'args': {'timeout': 60, 'html': 1}},
+        'prerender': {'args': {'timeout': 60, 'html': 1}},
 
         # download_timeout is always present,
         # it is set by DownloadTimeoutMiddleware
@@ -760,7 +760,7 @@ def test_adjust_timeout():
     assert req1.meta['download_timeout'] > 60
 
     req2 = scrapy.Request("http://example.com", meta = {
-        'splash': {'args': {'html': 1}},
+        'prerender': {'args': {'html': 1}},
         'download_timeout': 30,
     })
     req2 = mw.process_request(req2, None)

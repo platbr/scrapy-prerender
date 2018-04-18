@@ -6,13 +6,13 @@ from twisted.internet.defer import returnValue
 from twisted.web.resource import Resource
 from scrapy.crawler import Crawler
 
-from scrapy_splash.utils import to_bytes
+from scrapy_prerender.utils import to_bytes
 from tests.mockserver import MockServer
 
 
-requires_splash = pytest.mark.skipif(
-    not os.environ.get('SPLASH_URL', ''),
-    reason="set SPLASH_URL environment variable to run integrational tests"
+requires_prerender = pytest.mark.skipif(
+    not os.environ.get('PRERENDER_URL', ''),
+    reason="set PRERENDER_URL environment variable to run integrational tests"
 )
 
 

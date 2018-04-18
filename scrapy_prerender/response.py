@@ -8,18 +8,18 @@ import re
 from scrapy.http import Response, TextResponse
 from scrapy import Selector
 
-from scrapy_splash.utils import headers_to_scrapy
+from scrapy_prerender.utils import headers_to_scrapy
 
 
-def get_splash_status(resp):
-    return getattr(resp, 'splash_response_status', resp.status)
+def get_prerender_status(resp):
+    return getattr(resp, 'prerender_response_status', resp.status)
 
 
-def get_splash_headers(resp):
-    return getattr(resp, 'splash_response_headers', resp.headers)
+def get_prerender_headers(resp):
+    return getattr(resp, 'prerender_response_headers', resp.headers)
 
 
-class _SplashResponseMixin(object):
+class _PrerenderResponseMixin(object):
     """
     This mixin fixes response.url and adds response.real_url
     """
@@ -31,78 +31,78 @@ class _SplashResponseMixin(object):
             self.real_url = None
             # FIXME: create a .request @property with a setter?
             # Scrapy doesn't pass request to Response constructor;
-            # it is worked around in SplashMiddleware.
+            # it is worked around in PrerenderMiddleware.
             request = kwargs['request']
-            splash_args = self._splash_args(request)
-            _url = splash_args.get('url')
+            prerender_args = self._prerender_args(request)
+            _url = prerender_args.get('url')
             if _url is not None:
                 self.real_url = url
                 url = _url
-        self.splash_response_status = kwargs.pop('splash_response_status',
+        self.prerender_response_status = kwargs.pop('prerender_response_status',
                                                  None)
-        self.splash_response_headers = kwargs.pop('splash_response_headers',
+        self.prerender_response_headers = kwargs.pop('prerender_response_headers',
                                                   None)
-        super(_SplashResponseMixin, self).__init__(url, *args, **kwargs)
-        if self.splash_response_status is None:
-            self.splash_response_status = self.status
-        if self.splash_response_headers is None:
-            self.splash_response_headers = self.headers.copy()
+        super(_PrerenderResponseMixin, self).__init__(url, *args, **kwargs)
+        if self.prerender_response_status is None:
+            self.prerender_response_status = self.status
+        if self.prerender_response_headers is None:
+            self.prerender_response_headers = self.headers.copy()
 
     def replace(self, *args, **kwargs):
         """Create a new Response with the same attributes except for those
         given new values.
         """
         for x in ['url', 'status', 'headers', 'body', 'request', 'flags',
-                  'real_url', 'splash_response_status',
-                  'splash_response_headers']:
+                  'real_url', 'prerender_response_status',
+                  'prerender_response_headers']:
             kwargs.setdefault(x, getattr(self, x))
         cls = kwargs.pop('cls', self.__class__)
         return cls(*args, **kwargs)
 
-    def _splash_options(self, request=None):
+    def _prerender_options(self, request=None):
         if request is None:
             request = self.request
-        return request.meta.get("splash", {})
+        return request.meta.get("prerender", {})
 
-    def _splash_args(self, request=None):
-        return self._splash_options(request).get('args', {})
+    def _prerender_args(self, request=None):
+        return self._prerender_options(request).get('args', {})
 
 
-class SplashResponse(_SplashResponseMixin, Response):
+class PrerenderResponse(_PrerenderResponseMixin, Response):
     """
     This Response subclass sets response.url to the URL of a remote website
-    instead of an URL of Splash server. "Real" response URL is still available
+    instead of an URL of Prerender server. "Real" response URL is still available
     as ``response.real_url``.
     """
 
 
-class SplashTextResponse(_SplashResponseMixin, TextResponse):
+class PrerenderTextResponse(_PrerenderResponseMixin, TextResponse):
     """
     This TextResponse subclass sets response.url to the URL of a remote website
-    instead of an URL of Splash server. "Real" response URL is still available
+    instead of an URL of Prerender server. "Real" response URL is still available
     as ``response.real_url``.
     """
     def replace(self, *args, **kwargs):
         kwargs.setdefault('encoding', self.encoding)
-        return _SplashResponseMixin.replace(self, *args, **kwargs)
+        return _PrerenderResponseMixin.replace(self, *args, **kwargs)
 
 
-class SplashJsonResponse(SplashResponse):
+class PrerenderJsonResponse(PrerenderResponse):
     """
-    Splash Response with JSON data. It provides a convenient way to access
+    Prerender Response with JSON data. It provides a convenient way to access
     parsed JSON response using ``response.data`` attribute and exposes
-    current Splash cookiejar when it is available.
+    current Prerender cookiejar when it is available.
 
-    If Scrapy-Splash response magic is enabled in request
-    (['splash']['magic_response'] is not False), several other response
+    If Scrapy-Prerender response magic is enabled in request
+    (['prerender']['magic_response'] is not False), several other response
     attributes (headers, body, url, status code) are set automatically:
 
     * response.url is set to the value of 'url' key, original url is
       available as ``responce.real_url``;
     * response.headers are filled from 'headers' keys; original headers are
-      available as ``response.splash_response_headers``;
+      available as ``response.prerender_response_headers``;
     * response.status is set from the value of 'http_status' key; original
-      status is available as ``response.splash_response_status``;
+      status is available as ``response.prerender_response_status``;
     * response.body is set to the value of 'html' key,
       or to base64-decoded value of 'body' key;
     """
@@ -112,10 +112,10 @@ class SplashJsonResponse(SplashResponse):
         self._cached_data = None
         self._cached_selector = None
         kwargs.pop('encoding', None)  # encoding is always utf-8
-        super(SplashJsonResponse, self).__init__(*args, **kwargs)
+        super(PrerenderJsonResponse, self).__init__(*args, **kwargs)
 
         # FIXME: it assumes self.request is set
-        if self._splash_options().get('magic_response', True):
+        if self._prerender_options().get('magic_response', True):
             self._load_from_json()
 
     @property
@@ -159,7 +159,7 @@ class SplashJsonResponse(SplashResponse):
         # response.status
         if 'http_status' in self.data:
             self.status = int(self.data['http_status'])
-        elif self._splash_options().get('http_status_from_error_code', False):
+        elif self._prerender_options().get('http_status_from_error_code', False):
             if 'error' in self.data:
                 try:
                     error = self.data['info']['error']

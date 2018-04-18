@@ -2,7 +2,7 @@
 import scrapy
 from scrapy.linkextractors import LinkExtractor
 
-from scrapy_splash import SplashRequest
+from scrapy_prerender import PrerenderRequest
 
 
 class QuotesSpider(scrapy.Spider):
@@ -10,13 +10,13 @@ class QuotesSpider(scrapy.Spider):
     allowed_domains = ["toscrape.com"]
     start_urls = ['http://quotes.toscrape.com/']
 
-    # http_user = 'splash-user'
-    # http_pass = 'splash-password'
+    # http_user = 'prerender-user'
+    # http_pass = 'prerender-password'
 
     def parse(self, response):
         le = LinkExtractor()
         for link in le.extract_links(response):
-            yield SplashRequest(
+            yield PrerenderRequest(
                 link.url,
                 self.parse_link,
                 endpoint='render.json',

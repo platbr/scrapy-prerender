@@ -4,20 +4,20 @@ import copy
 import scrapy
 from scrapy.http import FormRequest
 
-from scrapy_splash import SlotPolicy
-from scrapy_splash.utils import to_native_str
+from scrapy_prerender import SlotPolicy
+from scrapy_prerender.utils import to_native_str
 
-# XXX: we can't implement SplashRequest without middleware support
-# because there is no way to set Splash URL based on settings
-# from inside SplashRequest.
+# XXX: we can't implement PrerenderRequest without middleware support
+# because there is no way to set Prerender URL based on settings
+# from inside PrerenderRequest.
 
 
-class SplashRequest(scrapy.Request):
+class PrerenderRequest(scrapy.Request):
     """
     scrapy.Request subclass which instructs Scrapy to render
-    the page using Splash.
+    the page using Prerender.
 
-    It requires SplashMiddleware to work.
+    It requires PrerenderMiddleware to work.
     """
     def __init__(self,
                  url=None,
@@ -25,9 +25,9 @@ class SplashRequest(scrapy.Request):
                  method='GET',
                  endpoint='render.html',
                  args=None,
-                 splash_url=None,
+                 prerender_url=None,
                  slot_policy=SlotPolicy.PER_DOMAIN,
-                 splash_headers=None,
+                 prerender_headers=None,
                  dont_process_response=False,
                  dont_send_headers=False,
                  magic_response=True,
@@ -42,70 +42,70 @@ class SplashRequest(scrapy.Request):
         url = to_native_str(url)
 
         meta = copy.deepcopy(meta) or {}
-        splash_meta = meta.setdefault('splash', {})
-        splash_meta.setdefault('endpoint', endpoint)
-        splash_meta.setdefault('slot_policy', slot_policy)
-        if splash_url is not None:
-            splash_meta['splash_url'] = splash_url
-        if splash_headers is not None:
-            splash_meta['splash_headers'] = splash_headers
+        prerender_meta = meta.setdefault('prerender', {})
+        prerender_meta.setdefault('endpoint', endpoint)
+        prerender_meta.setdefault('slot_policy', slot_policy)
+        if prerender_url is not None:
+            prerender_meta['prerender_url'] = prerender_url
+        if prerender_headers is not None:
+            prerender_meta['prerender_headers'] = prerender_headers
         if dont_process_response:
-            splash_meta['dont_process_response'] = True
+            prerender_meta['dont_process_response'] = True
         else:
-            splash_meta.setdefault('magic_response', magic_response)
+            prerender_meta.setdefault('magic_response', magic_response)
         if dont_send_headers:
-            splash_meta['dont_send_headers'] = True
+            prerender_meta['dont_send_headers'] = True
         if http_status_from_error_code:
-            splash_meta['http_status_from_error_code'] = True
+            prerender_meta['http_status_from_error_code'] = True
         if cache_args is not None:
-            splash_meta['cache_args'] = cache_args
+            prerender_meta['cache_args'] = cache_args
 
         if session_id is not None:
-            if splash_meta['endpoint'].strip('/') == 'execute':
-                splash_meta.setdefault('session_id', session_id)
+            if prerender_meta['endpoint'].strip('/') == 'execute':
+                prerender_meta.setdefault('session_id', session_id)
 
         _args = {'url': url}  # put URL to args in order to preserve #fragment
         _args.update(args or {})
-        _args.update(splash_meta.get('args', {}))
-        splash_meta['args'] = _args
+        _args.update(prerender_meta.get('args', {}))
+        prerender_meta['args'] = _args
 
-        # This is not strictly required, but it strengthens Splash
+        # This is not strictly required, but it strengthens Prerender
         # requests against AjaxCrawlMiddleware
         meta['ajax_crawlable'] = True
 
-        super(SplashRequest, self).__init__(url, callback, method, meta=meta,
+        super(PrerenderRequest, self).__init__(url, callback, method, meta=meta,
                                             **kwargs)
 
     @property
     def _processed(self):
-        return self.meta.get('_splash_processed')
+        return self.meta.get('_prerender_processed')
 
     @property
-    def _splash_args(self):
-        return self.meta.get('splash', {}).get('args', {})
+    def _prerender_args(self):
+        return self.meta.get('prerender', {}).get('args', {})
 
     @property
     def _original_url(self):
-        return self._splash_args.get('url')
+        return self._prerender_args.get('url')
 
     @property
     def _original_method(self):
-        return self._splash_args.get('http_method', 'GET')
+        return self._prerender_args.get('http_method', 'GET')
 
     def __str__(self):
         if not self._processed:
-            return super(SplashRequest, self).__str__()
+            return super(PrerenderRequest, self).__str__()
         return "<%s %s via %s>" % (self._original_method, self._original_url, self.url)
 
     __repr__ = __str__
 
 
-class SplashFormRequest(SplashRequest, FormRequest):
+class PrerenderFormRequest(PrerenderRequest, FormRequest):
     """
-    Use SplashFormRequest if you want to make a FormRequest via splash.
-    Accepts the same arguments as SplashRequest, and also formdata,
+    Use PrerenderFormRequest if you want to make a FormRequest via prerender.
+    Accepts the same arguments as PrerenderRequest, and also formdata,
     like FormRequest. First, FormRequest is initialized, and then it's
-    url, method and body are passed to SplashRequest.
+    url, method and body are passed to PrerenderRequest.
     Note that FormRequest calls escape_ajax on url (via Request._set_url).
     """
     def __init__(self, url=None, callback=None, method=None, formdata=None,
@@ -115,7 +115,7 @@ class SplashFormRequest(SplashRequest, FormRequest):
             FormRequest.__init__(
                 self, url=url, method=method, formdata=formdata)
             url, method, body = self.url, self.method, self.body
-        # Then pass all other kwargs to SplashRequest
-        SplashRequest.__init__(
+        # Then pass all other kwargs to PrerenderRequest
+        PrerenderRequest.__init__(
             self, url=url, callback=callback, method=method, body=body,
             **kwargs)

@@ -3,10 +3,11 @@
 build
 dist
 scrapyjs.egg-info
-scrapy_splash.egg-info
+scrapy_prerender.egg-info
 .cache
 .coverage
 .scrapy
 htmlcov
 .hypothesis
 .ipynb_checkpoints
+.pytest_cache

@@ -1,57 +1,57 @@
 ==============================================
-Scrapy & JavaScript integration through Splash
+Scrapy & JavaScript integration through Prerender
 ==============================================
 
-.. image:: https://img.shields.io/pypi/v/scrapy-splash.svg
-   :target: https://pypi.python.org/pypi/scrapy-splash
+.. image:: https://img.shields.io/pypi/v/scrapy-prerender.svg
+   :target: https://pypi.python.org/pypi/scrapy-prerender
    :alt: PyPI Version
 
-.. image:: https://travis-ci.org/scrapy-plugins/scrapy-splash.svg?branch=master
-   :target: http://travis-ci.org/scrapy-plugins/scrapy-splash
+.. image:: https://travis-ci.org/scrapy-plugins/scrapy-prerender.svg?branch=master
+   :target: http://travis-ci.org/scrapy-plugins/scrapy-prerender
    :alt: Build Status
 
-.. image:: http://codecov.io/github/scrapy-plugins/scrapy-splash/coverage.svg?branch=master
-   :target: http://codecov.io/github/scrapy-plugins/scrapy-splash?branch=master
+.. image:: http://codecov.io/github/scrapy-plugins/scrapy-prerender/coverage.svg?branch=master
+   :target: http://codecov.io/github/scrapy-plugins/scrapy-prerender?branch=master
    :alt: Code Coverage
 
-This library provides Scrapy_ and JavaScript integration using Splash_.
+This library provides Scrapy_ and JavaScript integration using Prerender_.
 The license is BSD 3-clause.
 
 .. _Scrapy: https://github.com/scrapy/scrapy
-.. _Splash: https://github.com/scrapinghub/splash
+.. _Prerender: https://github.com/scrapinghub/prerender
 
 Installation
 ============
 
-Install scrapy-splash using pip::
+Install scrapy-prerender using pip::
 
-    $ pip install scrapy-splash
+    $ pip install scrapy-prerender
 
-Scrapy-Splash uses Splash_ HTTP API, so you also need a Splash instance.
-Usually to install & run Splash, something like this is enough::
+Scrapy-Prerender uses Prerender_ HTTP API, so you also need a Prerender instance.
+Usually to install & run Prerender, something like this is enough::
 
-    $ docker run -p 8050:8050 scrapinghub/splash
+    $ docker run -p 8050:8050 scrapinghub/prerender
 
-Check Splash `install docs`_ for more info.
+Check Prerender `install docs`_ for more info.
 
-.. _install docs: http://splash.readthedocs.org/en/latest/install.html
+.. _install docs: http://prerender.readthedocs.org/en/latest/install.html
 
 
 Configuration
 =============
 
-1. Add the Splash server address to ``settings.py`` of your Scrapy project
+1. Add the Prerender server address to ``settings.py`` of your Scrapy project
    like this::
 
-      SPLASH_URL = 'http://192.168.59.103:8050'
+      PRERENDER_URL = 'http://192.168.59.103:8050'
 
-2. Enable the Splash middleware by adding it to ``DOWNLOADER_MIDDLEWARES``
+2. Enable the Prerender middleware by adding it to ``DOWNLOADER_MIDDLEWARES``
    in your ``settings.py`` file and changing HttpCompressionMiddleware
    priority::
 
       DOWNLOADER_MIDDLEWARES = {
-          'scrapy_splash.SplashCookiesMiddleware': 723,
-          'scrapy_splash.SplashMiddleware': 725,
+          'scrapy_prerender.PrerenderCookiesMiddleware': 723,
+          'scrapy_prerender.PrerenderMiddleware': 725,
           'scrapy.downloadermiddlewares.httpcompression.HttpCompressionMiddleware': 810,
       }
 
@@ -62,32 +62,32 @@ Configuration
    advanced response processing; see https://github.com/scrapy/scrapy/issues/1895
    for details.
 
-3. Enable ``SplashDeduplicateArgsMiddleware`` by adding it to
+3. Enable ``PrerenderDeduplicateArgsMiddleware`` by adding it to
    ``SPIDER_MIDDLEWARES`` in your ``settings.py``::
 
       SPIDER_MIDDLEWARES = {
-          'scrapy_splash.SplashDeduplicateArgsMiddleware': 100,
+          'scrapy_prerender.PrerenderDeduplicateArgsMiddleware': 100,
       }
 
    This middleware is needed to support ``cache_args`` feature; it allows
-   to save disk space by not storing duplicate Splash arguments multiple
-   times in a disk request queue. If Splash 2.1+ is used the middleware
+   to save disk space by not storing duplicate Prerender arguments multiple
+   times in a disk request queue. If Prerender 2.1+ is used the middleware
    also allows to save network traffic by not sending these duplicate
-   arguments to Splash server multiple times.
+   arguments to Prerender server multiple times.
 
 4. Set a custom ``DUPEFILTER_CLASS``::
 
-      DUPEFILTER_CLASS = 'scrapy_splash.SplashAwareDupeFilter'
+      DUPEFILTER_CLASS = 'scrapy_prerender.PrerenderAwareDupeFilter'
 
 5. If you use Scrapy HTTP cache then a custom cache storage backend
-   is required. scrapy-splash provides a subclass of
+   is required. scrapy-prerender provides a subclass of
    ``scrapy.contrib.httpcache.FilesystemCacheStorage``::
 
-      HTTPCACHE_STORAGE = 'scrapy_splash.SplashAwareFSCacheStorage'
+      HTTPCACHE_STORAGE = 'scrapy_prerender.PrerenderAwareFSCacheStorage'
 
    If you use other cache storage then it is necesary to subclass it and
    replace all ``scrapy.util.request.request_fingerprint`` calls with
-   ``scrapy_splash.splash_request_fingerprint``.
+   ``scrapy_prerender.prerender_request_fingerprint``.
 
 .. note::
 
@@ -99,18 +99,18 @@ Configuration
 There are also some additional options available.
 Put them into your ``settings.py`` if you want to change the defaults:
 
-* ``SPLASH_COOKIES_DEBUG`` is ``False`` by default.
-  Set to ``True`` to enable debugging cookies in the ``SplashCookiesMiddleware``.
+* ``PRERENDER_COOKIES_DEBUG`` is ``False`` by default.
+  Set to ``True`` to enable debugging cookies in the ``PrerenderCookiesMiddleware``.
   This option is similar to ``COOKIES_DEBUG``
   for the built-in scarpy cookies middleware: it logs sent and received cookies
   for all requests.
-* ``SPLASH_LOG_400`` is ``True`` by default - it instructs to log all 400 errors
-  from Splash. They are important because they show errors occurred
-  when executing the Splash script. Set it to ``False`` to disable this logging.
-* ``SPLASH_SLOT_POLICY`` is ``scrapy_splash.SlotPolicy.PER_DOMAIN`` (as object, not just a string) by default.
-  It specifies how concurrency & politeness are maintained for Splash requests,
+* ``PRERENDER_LOG_400`` is ``True`` by default - it instructs to log all 400 errors
+  from Prerender. They are important because they show errors occurred
+  when executing the Prerender script. Set it to ``False`` to disable this logging.
+* ``PRERENDER_SLOT_POLICY`` is ``scrapy_prerender.SlotPolicy.PER_DOMAIN`` (as object, not just a string) by default.
+  It specifies how concurrency & politeness are maintained for Prerender requests,
   and specify the default value for ``slot_policy`` argument for
-  ``SplashRequest``, which is described below.
+  ``PrerenderRequest``, which is described below.
 
 
 Usage
@@ -119,12 +119,12 @@ Usage
 Requests
 --------
 
-The easiest way to render requests with Splash is to
-use ``scrapy_splash.SplashRequest``::
+The easiest way to render requests with Prerender is to
+use ``scrapy_prerender.PrerenderRequest``::
 
-    yield SplashRequest(url, self.parse_result,
+    yield PrerenderRequest(url, self.parse_result,
         args={
-            # optional; parameters passed to Splash HTTP API
+            # optional; parameters passed to Prerender HTTP API
             'wait': 0.5,
 
             # 'url' is prefilled from request url
@@ -132,15 +132,15 @@ use ``scrapy_splash.SplashRequest``::
             # 'body' is set to request body for POST requests
         },
         endpoint='render.json', # optional; default is render.html
-        splash_url='<url>',     # optional; overrides SPLASH_URL
-        slot_policy=scrapy_splash.SlotPolicy.PER_DOMAIN,  # optional
+        prerender_url='<url>',     # optional; overrides PRERENDER_URL
+        slot_policy=scrapy_prerender.SlotPolicy.PER_DOMAIN,  # optional
     )
 
 Alternatively, you can use regular scrapy.Request and
-``'splash'`` Request `meta` key::
+``'prerender'`` Request `meta` key::
 
     yield scrapy.Request(url, self.parse_result, meta={
-        'splash': {
+        'prerender': {
             'args': {
                 # set rendering arguments here
                 'html': 1,
@@ -153,27 +153,27 @@ Alternatively, you can use regular scrapy.Request and
 
             # optional parameters
             'endpoint': 'render.json',  # optional; default is render.json
-            'splash_url': '<url>',      # optional; overrides SPLASH_URL
-            'slot_policy': scrapy_splash.SlotPolicy.PER_DOMAIN,
-            'splash_headers': {},       # optional; a dict with headers sent to Splash
+            'prerender_url': '<url>',      # optional; overrides PRERENDER_URL
+            'slot_policy': scrapy_prerender.SlotPolicy.PER_DOMAIN,
+            'prerender_headers': {},       # optional; a dict with headers sent to Prerender
             'dont_process_response': True, # optional, default is False
             'dont_send_headers': True,  # optional, default is False
             'magic_response': False,    # optional, default is True
         }
     })
 
-Use ``request.meta['splash']`` API in middlewares or when scrapy.Request
-subclasses are used (there is also ``SplashFormRequest`` described below).
-For example, ``meta['splash']`` allows to create a middleware which enables
-Splash for all outgoing requests by default.
+Use ``request.meta['prerender']`` API in middlewares or when scrapy.Request
+subclasses are used (there is also ``PrerenderFormRequest`` described below).
+For example, ``meta['prerender']`` allows to create a middleware which enables
+Prerender for all outgoing requests by default.
 
-``SplashRequest`` is a convenient utility to fill ``request.meta['splash']``;
-it should be easier to use in most cases. For each ``request.meta['splash']``
-key there is a corresponding ``SplashRequest`` keyword argument: for example,
-to set ``meta['splash']['args']`` use ``SplashRequest(..., args=myargs)``.
+``PrerenderRequest`` is a convenient utility to fill ``request.meta['prerender']``;
+it should be easier to use in most cases. For each ``request.meta['prerender']``
+key there is a corresponding ``PrerenderRequest`` keyword argument: for example,
+to set ``meta['prerender']['args']`` use ``PrerenderRequest(..., args=myargs)``.
 
-* ``meta['splash']['args']`` contains arguments sent to Splash.
-  scrapy-splash adds some default keys/values to ``args``:
+* ``meta['prerender']['args']`` contains arguments sent to Prerender.
+  scrapy-prerender adds some default keys/values to ``args``:
 
   * 'url' is set to request.url;
   * 'http_method' is set to 'POST' for POST requests;
@@ -182,84 +182,84 @@ to set ``meta['splash']['args']`` use ``SplashRequest(..., args=myargs)``.
   You can override default values by setting them explicitly.
 
   Note that by default Scrapy escapes URL fragments using AJAX escaping scheme.
-  If you want to pass a URL with a fragment to Splash then set ``url``
+  If you want to pass a URL with a fragment to Prerender then set ``url``
   in ``args`` dict manually. This is handled automatically if you use
-  ``SplashRequest``, but you need to keep that in mind if you use raw
-  ``meta['splash']`` API.
+  ``PrerenderRequest``, but you need to keep that in mind if you use raw
+  ``meta['prerender']`` API.
 
-  Splash 1.8+ is required to handle POST requests; in earlier Splash versions
+  Prerender 1.8+ is required to handle POST requests; in earlier Prerender versions
   'http_method' and 'body' arguments are ignored. If you work with ``/execute``
   endpoint and want to support POST requests you have to handle
   ``http_method`` and ``body`` arguments in your Lua script manually.
 
-* ``meta['splash']['cache_args']`` is a list of argument names to cache
-  on Splash side. These arguments are sent to Splash only once, then cached
+* ``meta['prerender']['cache_args']`` is a list of argument names to cache
+  on Prerender side. These arguments are sent to Prerender only once, then cached
   values are used; it allows to save network traffic and decreases request
   queue disk memory usage. Use ``cache_args`` only for large arguments
   which don't change with each request; ``lua_source`` is a good candidate
-  (if you don't use string formatting to build it). Splash 2.1+ is required
+  (if you don't use string formatting to build it). Prerender 2.1+ is required
   for this feature to work.
 
-* ``meta['splash']['endpoint']`` is the Splash endpoint to use.
-  In case of SplashRequest
-  `render.html <http://splash.readthedocs.org/en/latest/api.html#render-html>`_
+* ``meta['prerender']['endpoint']`` is the Prerender endpoint to use.
+  In case of PrerenderRequest
+  `render.html <http://prerender.readthedocs.org/en/latest/api.html#render-html>`_
   is used by default. If you're using raw scrapy.Request then
-  `render.json <http://splash.readthedocs.org/en/latest/api.html#render-json>`_
+  `render.json <http://prerender.readthedocs.org/en/latest/api.html#render-json>`_
   is a default (for historical reasons). It is better to always pass endpoint
   explicitly.
 
-  See Splash `HTTP API docs`_ for a full list of available endpoints
+  See Prerender `HTTP API docs`_ for a full list of available endpoints
   and parameters.
 
-.. _HTTP API docs: http://splash.readthedocs.org/en/latest/api.html
+.. _HTTP API docs: http://prerender.readthedocs.org/en/latest/api.html
 
-* ``meta['splash']['splash_url']`` overrides the Splash URL set
+* ``meta['prerender']['prerender_url']`` overrides the Prerender URL set
   in ``settings.py``.
 
-* ``meta['splash']['splash_headers']`` allows to add or change headers
-  which are sent to Splash server. Note that this option **is not** for
+* ``meta['prerender']['prerender_headers']`` allows to add or change headers
+  which are sent to Prerender server. Note that this option **is not** for
   setting headers which are sent to the remote website.
 
-* ``meta['splash']['slot_policy']`` customize how
-  concurrency & politeness are maintained for Splash requests.
+* ``meta['prerender']['slot_policy']`` customize how
+  concurrency & politeness are maintained for Prerender requests.
 
   Currently there are 3 policies available:
 
-  1. ``scrapy_splash.SlotPolicy.PER_DOMAIN`` (default) - send Splash requests to
+  1. ``scrapy_prerender.SlotPolicy.PER_DOMAIN`` (default) - send Prerender requests to
      downloader slots based on URL being rendered. It is useful if you want
      to maintain per-domain politeness & concurrency settings.
 
-  2. ``scrapy_splash.SlotPolicy.SINGLE_SLOT`` - send all Splash requests to
+  2. ``scrapy_prerender.SlotPolicy.SINGLE_SLOT`` - send all Prerender requests to
      a single downloader slot. It is useful if you want to throttle requests
-     to Splash.
+     to Prerender.
 
-  3. ``scrapy_splash.SlotPolicy.SCRAPY_DEFAULT`` - don't do anything with slots.
+  3. ``scrapy_prerender.SlotPolicy.SCRAPY_DEFAULT`` - don't do anything with slots.
      It is similar to ``SINGLE_SLOT`` policy, but can be different if you access
-     other services on the same address as Splash.
+     other services on the same address as Prerender.
 
-* ``meta['splash']['dont_process_response']`` - when set to True,
-  SplashMiddleware won't change the response to a custom scrapy.Response
-  subclass. By default for Splash requests one of SplashResponse,
-  SplashTextResponse or SplashJsonResponse is passed to the callback.
+* ``meta['prerender']['dont_process_response']`` - when set to True,
+  PrerenderMiddleware won't change the response to a custom scrapy.Response
+  subclass. By default for Prerender requests one of PrerenderResponse,
+  PrerenderTextResponse or PrerenderJsonResponse is passed to the callback.
 
-* ``meta['splash']['dont_send_headers']``: by default scrapy-splash passes
-  request headers to Splash in 'headers' JSON POST field. For all render.xxx
+* ``meta['prerender']['dont_send_headers']``: by default scrapy-prerender passes
+  request headers to Prerender in 'headers' JSON POST field. For all render.xxx
   endpoints it means Scrapy header options are respected by default
-  (http://splash.readthedocs.org/en/stable/api.html#arg-headers). In Lua
-  scripts you can use ``headers`` argument of ``splash:go`` to apply the
-  passed headers: ``splash:go{url, headers=splash.args.headers}``.
+  (http://prerender.readthedocs.org/en/stable/api.html#arg-headers). In Lua
+  scripts you can use ``headers`` argument of ``prerender:go`` to apply the
+  passed headers: ``prerender:go{url, headers=prerender.args.headers}``.
 
   Set 'dont_send_headers' to True if you don't want to pass ``headers``
-  to Splash.
+  to Prerender.
 
-* ``meta['splash']['http_status_from_error_code']`` - set response.status
-  to HTTP error code when ``assert(splash:go(..))`` fails; it requires
-  ``meta['splash']['magic_response']=True``. ``http_status_from_error_code``
+* ``meta['prerender']['http_status_from_error_code']`` - set response.status
+  to HTTP error code when ``assert(prerender:go(..))`` fails; it requires
+  ``meta['prerender']['magic_response']=True``. ``http_status_from_error_code``
   option is False by default if you use raw meta API;
-  SplashRequest sets it to True by default.
+  PrerenderRequest sets it to True by default.
 
-* ``meta['splash']['magic_response']`` - when set to True and a JSON
-  response is received from Splash, several attributes of the response
+* ``meta['prerender']['magic_response']`` - when set to True and a JSON
+  response is received from Prerender, several attributes of the response
   (headers, body, url, status code) are filled using data returned in JSON:
 
   * response.headers are filled from 'headers' keys;
@@ -267,60 +267,60 @@ to set ``meta['splash']['args']`` use ``SplashRequest(..., args=myargs)``.
   * response.body is set to the value of 'html' key,
     or to base64-decoded value of 'body' key;
   * response.status is set to the value of 'http_status' key.
-    When ``meta['splash']['http_status_from_error_code']`` is True
-    and ``assert(splash:go(..))`` fails with an HTTP error
+    When ``meta['prerender']['http_status_from_error_code']`` is True
+    and ``assert(prerender:go(..))`` fails with an HTTP error
     response.status is also set to HTTP error code.
 
   Original URL, status and headers are available as ``response.real_url``,
-  ``response.splash_response_status`` and ``response.splash_response_headers``.
+  ``response.prerender_response_status`` and ``response.prerender_response_headers``.
 
-  This option is set to True by default if you use SplashRequest.
+  This option is set to True by default if you use PrerenderRequest.
   ``render.json`` and ``execute`` endpoints may not have all the necessary
   keys/values in the response.
   For non-JSON endpoints, only url is filled, regardless of the
   ``magic_response`` setting.
 
 
-Use ``scrapy_splash.SplashFormRequest`` if you want to make a ``FormRequest``
-via splash. It accepts the same arguments as ``SplashRequest``,
+Use ``scrapy_prerender.PrerenderFormRequest`` if you want to make a ``FormRequest``
+via prerender. It accepts the same arguments as ``PrerenderRequest``,
 and also ``formdata``, like ``FormRequest`` from scrapy::
 
-    >>> SplashFormRequest('http://example.com', formdata={'foo': 'bar'})
+    >>> PrerenderFormRequest('http://example.com', formdata={'foo': 'bar'})
     <POST http://example.com>
 
-``SplashFormRequest.from_response`` is also supported, and works as described
+``PrerenderFormRequest.from_response`` is also supported, and works as described
 in `scrapy documentation <http://scrapy.readthedocs.org/en/latest/topics/request-response.html#scrapy.http.FormRequest.from_response>`_.
 
 Responses
 ---------
 
-scrapy-splash returns Response subclasses for Splash requests:
+scrapy-prerender returns Response subclasses for Prerender requests:
 
-* SplashResponse is returned for binary Splash responses - e.g. for
+* PrerenderResponse is returned for binary Prerender responses - e.g. for
   /render.png responses;
-* SplashTextResponse is returned when the result is text - e.g. for
+* PrerenderTextResponse is returned when the result is text - e.g. for
   /render.html responses;
-* SplashJsonResponse is returned when the result is a JSON object - e.g.
+* PrerenderJsonResponse is returned when the result is a JSON object - e.g.
   for /render.json responses or /execute responses when script returns
   a Lua table.
 
-To use standard Response classes set ``meta['splash']['dont_process_response']=True``
-or pass ``dont_process_response=True`` argument to SplashRequest.
+To use standard Response classes set ``meta['prerender']['dont_process_response']=True``
+or pass ``dont_process_response=True`` argument to PrerenderRequest.
 
 All these responses set ``response.url`` to the URL of the original request
 (i.e. to the URL of a website you want to render), not to the URL of the
-requested Splash endpoint. "True" URL is still available as
+requested Prerender endpoint. "True" URL is still available as
 ``response.real_url``.
 
-SplashJsonResponse provide extra features:
+PrerenderJsonResponse provide extra features:
 
 * ``response.data`` attribute contains response data decoded from JSON;
   you can access it like ``response.data['html']``.
 
-* If Splash session handling is configured, you can access current cookies
+* If Prerender session handling is configured, you can access current cookies
   as ``response.cookiejar``; it is a CookieJar instance.
 
-* If Scrapy-Splash response magic is enabled in request (default),
+* If Scrapy-Prerender response magic is enabled in request (default),
   several response attributes (headers, body, url, status code)
   are set automatically from original response body:
 
@@ -330,61 +330,61 @@ SplashJsonResponse provide extra features:
     or to base64-decoded value of 'body' key;
   * response.status is set from the value of 'http_status' key.
 
-When ``response.body`` is updated in SplashJsonResponse
+When ``response.body`` is updated in PrerenderJsonResponse
 (either from 'html' or from 'body' keys) familiar ``response.css``
 and ``response.xpath`` methods are available.
 
 To turn off special handling of JSON result keys either set
-``meta['splash']['magic_response']=False`` or pass ``magic_response=False``
-argument to SplashRequest.
+``meta['prerender']['magic_response']=False`` or pass ``magic_response=False``
+argument to PrerenderRequest.
 
 Session Handling
 ================
 
-Splash itself is stateless - each request starts from a clean state.
+Prerender itself is stateless - each request starts from a clean state.
 In order to support sessions the following is required:
 
-1. client (Scrapy) must send current cookies to Splash;
-2. Splash script should make requests using these cookies and update
+1. client (Scrapy) must send current cookies to Prerender;
+2. Prerender script should make requests using these cookies and update
    them from HTTP response headers or JavaScript code;
 3. updated cookies should be sent back to the client;
 4. client should merge current cookies wiht the updated cookies.
 
-For (2) and (3) Splash provides ``splash:get_cookies()`` and
-``splash:init_cookies()`` methods which can be used in Splash Lua scripts.
+For (2) and (3) Prerender provides ``prerender:get_cookies()`` and
+``prerender:init_cookies()`` methods which can be used in Prerender Lua scripts.
 
-scrapy-splash provides helpers for (1) and (4): to send current cookies
+scrapy-prerender provides helpers for (1) and (4): to send current cookies
 in 'cookies' field and merge cookies back from 'cookies' response field
-set ``request.meta['splash']['session_id']`` to the session
+set ``request.meta['prerender']['session_id']`` to the session
 identifier. If you only want a single session use the same ``session_id`` for
 all request; any value like '1' or 'foo' is fine.
 
-For scrapy-splash session handling to work you must use ``/execute`` endpoint
+For scrapy-prerender session handling to work you must use ``/execute`` endpoint
 and a Lua script which accepts 'cookies' argument and returns 'cookies'
 field in the result::
 
-   function main(splash)
-       splash:init_cookies(splash.args.cookies)
+   function main(prerender)
+       prerender:init_cookies(prerender.args.cookies)
 
        -- ... your script
 
        return {
-           cookies = splash:get_cookies(),
+           cookies = prerender:get_cookies(),
            -- ... other results, e.g. html
        }
    end
 
-SplashRequest sets ``session_id`` automatically for ``/execute`` endpoint,
-i.e. cookie handling is enabled by default if you use SplashRequest,
+PrerenderRequest sets ``session_id`` automatically for ``/execute`` endpoint,
+i.e. cookie handling is enabled by default if you use PrerenderRequest,
 ``/execute`` endpoint and a compatible Lua rendering script.
 
 If you want to start from the same set of cookies, but then 'fork' sessions
-set ``request.meta['splash']['new_session_id']`` in addition to
+set ``request.meta['prerender']['new_session_id']`` in addition to
 ``session_id``. Request cookies will be fetched from cookiejar ``session_id``,
 but response cookies will be merged back to the ``new_session_id`` cookiejar.
 
-Standard Scrapy ``cookies`` argument can be used with ``SplashRequest``
-to add cookies to the current Splash cookiejar.
+Standard Scrapy ``cookies`` argument can be used with ``PrerenderRequest``
+to add cookies to the current Prerender cookiejar.
 
 Examples
 ========
@@ -392,14 +392,14 @@ Examples
 Get HTML contents::
 
     import scrapy
-    from scrapy_splash import SplashRequest
+    from scrapy_prerender import PrerenderRequest
 
     class MySpider(scrapy.Spider):
         start_urls = ["http://example.com", "http://example.com/foo"]
 
         def start_requests(self):
             for url in self.start_urls:
-                yield SplashRequest(url, self.parse, args={'wait': 0.5})
+                yield PrerenderRequest(url, self.parse, args={'wait': 0.5})
 
         def parse(self, response):
             # response.body is a result of render.html call; it
@@ -411,19 +411,19 @@ Get HTML contents and a screenshot::
     import json
     import base64
     import scrapy
-    from scrapy_splash import SplashRequest
+    from scrapy_prerender import PrerenderRequest
 
     class MySpider(scrapy.Spider):
 
         # ...
-            splash_args = {
+            prerender_args = {
                 'html': 1,
                 'png': 1,
                 'width': 600,
                 'render_all': 1,
             }
-            yield SplashRequest(url, self.parse_result, endpoint='render.json',
-                                args=splash_args)
+            yield PrerenderRequest(url, self.parse_result, endpoint='render.json',
+                                args=prerender_args)
 
         # ...
         def parse_result(self, response):
@@ -439,23 +439,23 @@ Get HTML contents and a screenshot::
 
             # ...
 
-Run a simple `Splash Lua Script`_::
+Run a simple `Prerender Lua Script`_::
 
     import json
     import base64
-    from scrapy_splash import SplashRequest
+    from scrapy_prerender import PrerenderRequest
 
 
     class MySpider(scrapy.Spider):
 
         # ...
             script = """
-            function main(splash)
-                assert(splash:go(splash.args.url))
-                return splash:evaljs("document.title")
+            function main(prerender)
+                assert(prerender:go(prerender.args.url))
+                return prerender:evaljs("document.title")
             end
             """
-            yield SplashRequest(url, self.parse_result, endpoint='execute',
+            yield PrerenderRequest(url, self.parse_result, endpoint='execute',
                                 args={'lua_source': script})
 
         # ...
@@ -464,13 +464,13 @@ Run a simple `Splash Lua Script`_::
             # ...
 
 
-More complex `Splash Lua Script`_ example - get a screenshot of an HTML
-element by its CSS selector (it requires Splash 2.1+).
+More complex `Prerender Lua Script`_ example - get a screenshot of an HTML
+element by its CSS selector (it requires Prerender 2.1+).
 Note how are arguments passed to the script::
 
     import json
     import base64
-    from scrapy_splash import SplashRequest
+    from scrapy_prerender import PrerenderRequest
 
     script = """
     -- Arguments:
@@ -484,10 +484,10 @@ Note how are arguments passed to the script::
     end
 
     -- main script
-    function main(splash)
+    function main(prerender)
 
       -- this function returns element bounding box
-      local get_bbox = splash:jsfunc([[
+      local get_bbox = prerender:jsfunc([[
         function(css) {
           var el = document.querySelector(css);
           var r = el.getBoundingClientRect();
@@ -495,14 +495,14 @@ Note how are arguments passed to the script::
         }
       ]])
 
-      assert(splash:go(splash.args.url))
-      assert(splash:wait(0.5))
+      assert(prerender:go(prerender.args.url))
+      assert(prerender:wait(0.5))
 
       -- don't crop image by a viewport
-      splash:set_viewport_full()
+      prerender:set_viewport_full()
 
-      local region = pad(get_bbox(splash.args.css), splash.args.pad)
-      return splash:png{region=region}
+      local region = pad(get_bbox(prerender.args.css), prerender.args.pad)
+      return prerender:png{region=region}
     end
     """
 
@@ -510,7 +510,7 @@ Note how are arguments passed to the script::
 
 
         # ...
-            yield SplashRequest(url, self.parse_element_screenshot,
+            yield PrerenderRequest(url, self.parse_element_screenshot,
                 endpoint='execute',
                 args={
                     'lua_source': script,
@@ -527,30 +527,30 @@ Note how are arguments passed to the script::
 
 Use a Lua script to get an HTML response with cookies, headers, body
 and method set to correct values; ``lua_source`` argument value is cached
-on Splash server and is not sent with each request (it requires Splash 2.1+)::
+on Prerender server and is not sent with each request (it requires Prerender 2.1+)::
 
     import scrapy
-    from scrapy_splash import SplashRequest
+    from scrapy_prerender import PrerenderRequest
 
     script = """
-    function main(splash)
-      splash:init_cookies(splash.args.cookies)
-      assert(splash:go{
-        splash.args.url,
-        headers=splash.args.headers,
-        http_method=splash.args.http_method,
-        body=splash.args.body,
+    function main(prerender)
+      prerender:init_cookies(prerender.args.cookies)
+      assert(prerender:go{
+        prerender.args.url,
+        headers=prerender.args.headers,
+        http_method=prerender.args.http_method,
+        body=prerender.args.body,
         })
-      assert(splash:wait(0.5))
+      assert(prerender:wait(0.5))
 
-      local entries = splash:history()
+      local entries = prerender:history()
       local last_response = entries[#entries].response
       return {
-        url = splash:url(),
+        url = prerender:url(),
         headers = last_response.headers,
         http_status = last_response.status,
-        cookies = splash:get_cookies(),
-        html = splash:html(),
+        cookies = prerender:get_cookies(),
+        html = prerender:html(),
       }
     end
     """
@@ -559,7 +559,7 @@ on Splash server and is not sent with each request (it requires Splash 2.1+)::
 
 
         # ...
-            yield SplashRequest(url, self.parse_result,
+            yield PrerenderRequest(url, self.parse_result,
                 endpoint='execute',
                 cache_args=['lua_source'],
                 args={'lua_source': script},
@@ -569,33 +569,33 @@ on Splash server and is not sent with each request (it requires Splash 2.1+)::
         def parse_result(self, response):
             # here response.body contains result HTML;
             # response.headers are filled with headers from last
-            # web page loaded to Splash;
+            # web page loaded to Prerender;
             # cookies from all responses and from JavaScript are collected
             # and put into Set-Cookie response header, so that Scrapy
             # can remember them.
 
 
 
-.. _Splash Lua Script: http://splash.readthedocs.org/en/latest/scripting-tutorial.html
+.. _Prerender Lua Script: http://prerender.readthedocs.org/en/latest/scripting-tutorial.html
 
 
 HTTP Basic Auth
 ===============
 
-If you need HTTP Basic Authentication to access Splash, use
+If you need HTTP Basic Authentication to access Prerender, use
 Scrapy's HttpAuthMiddleware_.
 
-Another option is ``meta['splash']['splash_headers']``: it allows to set
-custom headers which are sent to Splash server; add Authorization header
-to ``splash_headers`` if HttpAuthMiddleware doesn't fit for some reason.
+Another option is ``meta['prerender']['prerender_headers']``: it allows to set
+custom headers which are sent to Prerender server; add Authorization header
+to ``prerender_headers`` if HttpAuthMiddleware doesn't fit for some reason.
 
 .. _HttpAuthMiddleware: http://doc.scrapy.org/en/latest/topics/downloader-middleware.html#module-scrapy.downloadermiddlewares.httpauth
 
-Why not use the Splash HTTP API directly?
+Why not use the Prerender HTTP API directly?
 =========================================
 
-The obvious alternative to scrapy-splash would be to send requests directly
-to the Splash `HTTP API`_. Take a look at the example below and make
+The obvious alternative to scrapy-prerender would be to send requests directly
+to the Prerender `HTTP API`_. Take a look at the example below and make
 sure to read the observations after it::
 
     import json
@@ -632,14 +632,14 @@ aware of:
    in unexpected ways since delays and concurrency settings are no longer
    per-domain.
 
-3. As seen by Scrapy, response.url is an URL of the Splash server.
-   scrapy-splash fixes it to be an URL of a requested page.
-   "Real" URL is still available as ``response.real_url``. scrapy-splash also
+3. As seen by Scrapy, response.url is an URL of the Prerender server.
+   scrapy-prerender fixes it to be an URL of a requested page.
+   "Real" URL is still available as ``response.real_url``. scrapy-prerender also
    allows to handle ``response.status`` and ``response.headers`` transparently
    on Scrapy side.
 
 4. Some options depend on each other - for example, if you use timeout_
-   Splash option then you may want to set ``download_timeout``
+   Prerender option then you may want to set ``download_timeout``
    scrapy.Request meta key as well.
 
 5. It is easy to get it subtly wrong - e.g. if you won't use
@@ -647,59 +647,59 @@ aware of:
    content could vary even if all keys and values are the same, and it means
    dupefilter and cache will work incorrectly.
 
-6. Default Scrapy duplication filter doesn't take Splash specifics in
+6. Default Scrapy duplication filter doesn't take Prerender specifics in
    account. For example, if an URL is sent in a JSON POST request body
    Scrapy will compute request fingerprint without canonicalizing this URL.
 
-7. Splash Bad Request (HTTP 400) errors are hard to debug because by default
-   response content is not displayed by Scrapy. SplashMiddleware logs content
-   of HTTP 400 Splash responses by default (it can be turned off by setting
-   ``SPLASH_LOG_400 = False`` option).
+7. Prerender Bad Request (HTTP 400) errors are hard to debug because by default
+   response content is not displayed by Scrapy. PrerenderMiddleware logs content
+   of HTTP 400 Prerender responses by default (it can be turned off by setting
+   ``PRERENDER_LOG_400 = False`` option).
 
 8. Cookie handling is tedious to implement, and you can't use Scrapy
-   built-in Cookie middleware to handle cookies when working with Splash.
+   built-in Cookie middleware to handle cookies when working with Prerender.
 
-9. Large Splash arguments which don't change with every request
+9. Large Prerender arguments which don't change with every request
    (e.g. ``lua_source``) may take a lot of space when saved to Scrapy disk
-   request queues. ``scrapy-splash`` provides a way to store such static
+   request queues. ``scrapy-prerender`` provides a way to store such static
    parameters only once.
 
-10. Splash 2.1+ provides a way to save network traffic by caching large
+10. Prerender 2.1+ provides a way to save network traffic by caching large
     static arguments on server, but it requires client support: client should
     send proper ``save_args`` and ``load_args`` values and handle HTTP 498
     responses.
 
-scrapy-splash utlities allow to handle such edge cases and reduce
+scrapy-prerender utlities allow to handle such edge cases and reduce
 the boilerplate.
 
-.. _HTTP API: http://splash.readthedocs.org/en/latest/api.html
-.. _timeout: http://splash.readthedocs.org/en/latest/api.html#arg-timeout
+.. _HTTP API: http://prerender.readthedocs.org/en/latest/api.html
+.. _timeout: http://prerender.readthedocs.org/en/latest/api.html#arg-timeout
 
 
 Getting help
 ============
 
-* for problems with rendering pages read "`Splash FAQ`_" page
+* for problems with rendering pages read "`Prerender FAQ`_" page
 * for Scrapy-related bugs take a look at "`reporting Scrapy bugs`_" page
 
 Best approach to get any other help is to ask a question on `Stack Overflow`_
 
 .. _reporting Scrapy bugs: https://doc.scrapy.org/en/master/contributing.html#reporting-bugs
-.. _Splash FAQ: http://splash.readthedocs.io/en/stable/faq.html#website-is-not-rendered-correctly
-.. _Stack Overflow: https://stackoverflow.com/questions/tagged/scrapy-splash?sort=frequent&pageSize=15&mixed=1
+.. _Prerender FAQ: http://prerender.readthedocs.io/en/stable/faq.html#website-is-not-rendered-correctly
+.. _Stack Overflow: https://stackoverflow.com/questions/tagged/scrapy-prerender?sort=frequent&pageSize=15&mixed=1
 
 
 Contributing
 ============
 
 Source code and bug tracker are on github:
-https://github.com/scrapy-plugins/scrapy-splash
+https://github.com/scrapy-plugins/scrapy-prerender
 
 To run tests, install "tox" Python package and then run ``tox`` command
 from the source checkout.
 
-To run integration tests, start Splash and set SPLASH_URL env variable
-to Splash address before running ``tox`` command::
+To run integration tests, start Prerender and set PRERENDER_URL env variable
+to Prerender address before running ``tox`` command::
 
-   docker run -d --rm -p8050:8050 scrapinghub/splash:3.0
-   SPLASH_URL=http://127.0.0.1:8050 tox -e py36
+   docker run -d --rm -p8050:8050 scrapinghub/prerender:3.0
+   PRERENDER_URL=http://127.0.0.1:8050 tox -e py36
